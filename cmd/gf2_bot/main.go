@@ -2,22 +2,19 @@ package main
 
 import (
 	"context"
-	"fmt"
+	bch "gf2_bot/internal/bot_cmd_handler"
 	"log"
-	"strings"
 	"time"
+
+	botctl "gf2_bot/internal/bot_controller"
 
 	"github.com/gin-gonic/gin"
 	"github.com/tencent-connect/botgo"
 	"github.com/tencent-connect/botgo/dto"
-	"github.com/tencent-connect/botgo/dto/message"
 	"github.com/tencent-connect/botgo/event"
 	"github.com/tencent-connect/botgo/interaction/webhook"
-	"github.com/tencent-connect/botgo/openapi"
 	"github.com/tencent-connect/botgo/token"
 )
-
-var api openapi.OpenAPI
 
 const (
 	appId_     = "102351637"
@@ -39,11 +36,16 @@ func main() {
 	}
 
 	// 初始化 openapi，正式环境
-	api = botgo.NewOpenAPI(credentials.AppID, tokenSource).WithTimeout(5 * time.Second).SetDebug(true)
+	qqBotOpenapi := botgo.NewOpenAPI(credentials.AppID, tokenSource).
+		WithTimeout(5 * time.Second).SetDebug(true)
+	//
+	botHandlerProxy := bch.NewBotCmdHandlerProxy()
+	// 机器人的控制器，将指令转发
+	botController := botctl.NewBotController(qqBotOpenapi, botHandlerProxy)
 
 	_ = event.RegisterHandlers(
 		// 注册事件
-		groupATMessageEventHandler(),
+		botController.MessageHandler(),
 	)
 
 	engine := gin.Default()
@@ -54,23 +56,6 @@ func main() {
 	if err := engine.Run(":50008"); err != nil {
 		log.Fatalln(err)
 	}
-}
-
-// GroupATMessageEventHandler 实现处理 at 消息的回调
-func groupATMessageEventHandler() event.GroupATMessageEventHandler {
-	return func(event *dto.WSPayload, data *dto.WSGroupATMessageData) error {
-		input := strings.ToLower(message.ETLInput(data.Content))
-		return processGroupMessage(input, data)
-
-	}
-}
-
-func processGroupMessage(content string, data *dto.WSGroupATMessageData) error {
-	msg := generateDemoMessage(content, dto.Message(*data))
-	if err := sendGroupReply(context.Background(), data.GroupID, msg); err != nil {
-		_ = sendGroupReply(context.Background(), data.GroupID, genErrMessage(dto.Message(*data), err))
-	}
-	return nil
 }
 
 func generateDemoMessage(input string, data dto.Message) *dto.MessageToCreate {
@@ -85,28 +70,6 @@ func generateDemoMessage(input string, data dto.Message) *dto.MessageToCreate {
 	return &dto.MessageToCreate{
 		Timestamp: time.Now().UnixMilli(),
 		Content:   msg,
-		MessageReference: &dto.MessageReference{
-			// 引用这条消息
-			MessageID:             data.ID,
-			IgnoreGetMessageError: true,
-		},
-		MsgID: data.ID,
-	}
-}
-
-func sendGroupReply(ctx context.Context, groupID string, toCreate dto.APIMessage) error {
-	log.Printf("EVENT ID: %v\n", toCreate.GetEventID())
-	if _, err := api.PostGroupMessage(ctx, groupID, toCreate); err != nil {
-		log.Println(err)
-		return err
-	}
-	return nil
-}
-
-func genErrMessage(data dto.Message, err error) *dto.MessageToCreate {
-	return &dto.MessageToCreate{
-		Timestamp: time.Now().UnixMilli(),
-		Content:   fmt.Sprintf("处理异常:%v", err),
 		MessageReference: &dto.MessageReference{
 			// 引用这条消息
 			MessageID:             data.ID,
