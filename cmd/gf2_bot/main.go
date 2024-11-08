@@ -3,6 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
+	"strings"
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/tencent-connect/botgo"
 	"github.com/tencent-connect/botgo/dto"
@@ -11,9 +15,6 @@ import (
 	"github.com/tencent-connect/botgo/interaction/webhook"
 	"github.com/tencent-connect/botgo/openapi"
 	"github.com/tencent-connect/botgo/token"
-	"log"
-	"strings"
-	"time"
 )
 
 var api openapi.OpenAPI
@@ -50,10 +51,7 @@ func main() {
 		webhook.HTTPHandler(ginc.Writer, ginc.Request, credentials)
 	})
 
-	//if err := engine.Run(":50008"); err != nil {
-	//	log.Fatalln(err)
-	//}
-	if err := engine.RunTLS(":50008", "", ""); err != nil {
+	if err := engine.Run(":50008"); err != nil {
 		log.Fatalln(err)
 	}
 }
