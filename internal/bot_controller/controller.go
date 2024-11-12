@@ -28,8 +28,10 @@ func NewBotController(api openapi.OpenAPI, botHandlerProxy bch.BotCmdHandlerProx
 func (s *botController) MessageHandler() event.GroupATMessageEventHandler {
 	return func(event *dto.WSPayload, data *dto.WSGroupATMessageData) error {
 		input := strings.ToLower(message.ETLInput(data.Content))
-		ctx := context.Background()
+		message := dto.Message(*data)
 
+		// TODO 上下文放到哪里？比如当前通讯的qq用户的用户信息等等
+		ctx := bch.WithDtoMessage(context.Background(), &message)
 		// 解析input，派发到不同的handler处理
 		msg, err := s.botHandlerProxy.Handler(ctx, input)
 		if err != nil {

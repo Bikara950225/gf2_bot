@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	bch "gf2_bot/internal/bot_cmd_handler"
+	"gf2_bot/internal/bot_cmd_handler/debug_handler"
 	"log"
 	"time"
 
@@ -10,7 +11,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/tencent-connect/botgo"
-	"github.com/tencent-connect/botgo/dto"
 	"github.com/tencent-connect/botgo/event"
 	"github.com/tencent-connect/botgo/interaction/webhook"
 	"github.com/tencent-connect/botgo/token"
@@ -40,6 +40,10 @@ func main() {
 		WithTimeout(5 * time.Second).SetDebug(true)
 	//
 	botHandlerProxy := bch.NewBotCmdHandlerProxy()
+	debugHandler := debug_handler.NewDebugHandler()
+	botHandlerProxy.Register("角色详情", debugHandler)
+	botHandlerProxy.Register("指令测试1", debugHandler)
+	botHandlerProxy.Register("抽卡分析", debugHandler)
 	// 机器人的控制器，将指令转发
 	botController := botctl.NewBotController(qqBotOpenapi, botHandlerProxy)
 
@@ -55,26 +59,5 @@ func main() {
 
 	if err := engine.Run(":50008"); err != nil {
 		log.Fatalln(err)
-	}
-}
-
-func generateDemoMessage(input string, data dto.Message) *dto.MessageToCreate {
-	log.Printf("收到指令: %+v\n", input)
-	msg := ""
-	if len(input) > 0 {
-		msg += "收到:" + input
-	}
-	for _, _v := range data.Attachments {
-		msg += ",收到文件类型:" + _v.ContentType
-	}
-	return &dto.MessageToCreate{
-		Timestamp: time.Now().UnixMilli(),
-		Content:   msg,
-		MessageReference: &dto.MessageReference{
-			// 引用这条消息
-			MessageID:             data.ID,
-			IgnoreGetMessageError: true,
-		},
-		MsgID: data.ID,
 	}
 }

@@ -9,6 +9,7 @@ import (
 
 type BotCmdHandlerProxy interface {
 	Handler(ctx context.Context, input string) (ret *dto.MessageToCreate, err error)
+	Register(command string, handlePlugin BotCmdHandlerPlugin)
 }
 
 type BotCmdHandlerPlugin interface {
@@ -21,10 +22,12 @@ type botCmdHandlerProxyImpl struct {
 
 func NewBotCmdHandlerProxy() BotCmdHandlerProxy {
 	return &botCmdHandlerProxyImpl{
-		proxy: map[string]BotCmdHandlerPlugin{
-			"角色面板": nil,
-		},
+		proxy: map[string]BotCmdHandlerPlugin{},
 	}
+}
+
+func (b *botCmdHandlerProxyImpl) Register(command string, handlePlugin BotCmdHandlerPlugin) {
+	b.proxy[command] = handlePlugin
 }
 
 func (b *botCmdHandlerProxyImpl) Handler(ctx context.Context, input string) (ret *dto.MessageToCreate, err error) {
@@ -34,7 +37,8 @@ func (b *botCmdHandlerProxyImpl) Handler(ctx context.Context, input string) (ret
 	}
 
 	if plugin, ok := b.proxy[command]; ok {
-		// TODO 上下文放到哪里？比如当前通讯的qq用户的用户信息等等
+		ctx = WithCommand(ctx, command)
+
 		return plugin.Handler(ctx, params...)
 	} else {
 		return nil, fmt.Errorf("未知的指令：%s", command)
